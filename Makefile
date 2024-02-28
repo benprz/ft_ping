@@ -3,37 +3,31 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -Wpedantic -g
 CDEBUGFLAGS = -g
-INC_DIR = includes/
+INC_DIR = inc/
 
 EXE = ft_ping
 
-SRC_DIR = ./
-SRC =	main.c
+SRC_DIR = src/
+SRC =	main.c\
+		ft_ping.c
 
-LIBRARY_DIR = ./
+OBJ_DIR = .obj/
+OBJ = $(SRC:%.c=$(OBJ_DIR)%.o)
 
-LIBFT_DIR = $(LIBRARY_DIR)libft/
-LIBFT_INC_DIR = $(LIBFT_DIR)includes/
-LIBFT_INC = -I $(LIBFT_INC_DIR) $(LIBFT_DIR)libft.a
+.PHONY : all clean fclean re $(EXE)
 
-OBJ = $(SRC:%.c=%.o)
-
-.PHONY : all clean fclean re $(LIBFT_DIR) $(EXE)
-
-all: $(LIBFT_DIR) $(EXE)
+all: $(EXE)
 
 $(EXE): $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ_DIR)main.o $(LIBFT_INC) -o $(EXE)
+	$(CC) $(CFLAGS) $(OBJ) -o $(EXE)
+	@echo "------------\n"
 
-$(LIBFT_DIR):
-	$(MAKE) -C $(LIBFT_DIR)
-
-%.o: $(SRC_DIR)%.c $(addprefix $(INC_DIR),$(INC))
-	$(CC) $(CFLAGS) -c $< -o $@ -I $(LIBFT_INC_DIR) -I $(INC_DIR)
+$(OBJ_DIR)%.o: $(SRC_DIR)%.c $(addprefix $(INC_DIR),$(INC))
+	@mkdir -p $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@ -I $(INC_DIR)
 
 clean:
-	/bin/rm -rf *.o
-	$(MAKE) -C $(LIBFT_DIR) fclean
+	/bin/rm -rf $(OBJ_DIR)
 
 fclean: clean
 	/bin/rm -f $(EXE)

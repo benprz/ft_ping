@@ -1,0 +1,69 @@
+// inetutils-2.0 (ping -V)
+// -v options
+// simple ipv4 (address/hostname) as parameters
+// manage FQDN without doing DNS resolution in the packet return
+
+#include "ft_ping.h"
+#include <argp.h>
+
+const char args_doc[] = "HOST ...";
+const char doc[] = "Send ICMP ECHO_REQUEST packets to network hosts."
+				   "\vOptions marked with (root only) are available only to "
+				   "superuser.";
+
+struct s_ping g_ping = {NULL, false};
+
+int parse_host(char *host)
+{
+	struct addrinfo hints = {0};
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	if (getaddrinfo(host, NULL, &hints, &g_ping.host) != 0)
+	{
+		error(EXIT_FAILURE, 0, "unknown host");
+	}
+
+	return 0;
+}
+
+int parse_options(int key, char *arg, struct argp_state *state)
+{
+	switch (key)
+	{
+	case 'v':
+		g_ping.verbose = true;
+		break;
+
+	case ARGP_KEY_ARG:
+		return parse_host(arg);
+
+	case ARGP_KEY_NO_ARGS:
+		argp_error(state, "missing host operand");
+
+	/* FALLTHROUGH */
+	default:
+		return ARGP_ERR_UNKNOWN;
+	}
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	// if (getuid() != 0)
+	// {
+	//     printf("You must be root to use ping\n");
+	//     return (1);
+	// }
+
+	// argp
+	struct argp_option options[] = {
+		{"verbose", 'v', 0, 0, "Produce verbose output", 0},
+		{0}};
+
+	struct argp argp = {options, parse_options, args_doc, doc, 0, 0, 0};
+	argp_parse(&argp, argc, argv, 0, 0, 0);
+
+	return ft_ping();
+}
