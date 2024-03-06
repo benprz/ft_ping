@@ -11,7 +11,7 @@ const char doc[] = "Send ICMP ECHO_REQUEST packets to network hosts."
 				   "\vOptions marked with (root only) are available only to "
 				   "superuser.";
 
-struct s_ping g_ping = {NULL, false};
+struct s_ping g_ping = {NULL, {0}, NULL, false, 0};
 
 int parse_host(char *host)
 {
@@ -24,6 +24,12 @@ int parse_host(char *host)
 	{
 		error(EXIT_FAILURE, 0, "unknown host");
 	}
+
+	g_ping.hostarg = host;
+
+	struct sockaddr_in *ipv4 = (struct sockaddr_in *)g_ping.host->ai_addr;
+	void *addr = &(ipv4->sin_addr);
+	inet_ntop(g_ping.host->ai_family, addr, g_ping.hostip, INET_ADDRSTRLEN);
 
 	return 0;
 }

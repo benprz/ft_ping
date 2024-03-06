@@ -22,8 +22,11 @@
 
 struct s_ping
 {
+    char *hostarg;
+    char hostip[INET_ADDRSTRLEN];
     struct addrinfo *host;
     bool verbose;
+    pid_t self_pid;
 };
 
 extern struct s_ping g_ping;
