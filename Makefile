@@ -27,10 +27,10 @@ $(OBJ_DIR)%.o: $(SRC_DIR)%.c $(addprefix $(INC_DIR),$(INC))
 	$(CC) $(CFLAGS) -c $< -o $@ -I $(INC_DIR)
 
 clean:
-	/bin/rm -rf $(OBJ_DIR)
+	@/bin/rm -rf $(OBJ_DIR)
 
 fclean: clean
-	/bin/rm -f $(EXE)
+	@/bin/rm -f $(EXE)
 
 re: 
 	$(MAKE) fclean

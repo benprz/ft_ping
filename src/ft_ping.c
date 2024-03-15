@@ -57,12 +57,33 @@ uint16_t calculate_checksum(uint16_t *icmp_hdr, int len)
 	return (uint16_t)(~sum);
 }
 
-void send_packet(int sockfd, char *packet)
+void send_request(int sockfd, char *packet)
 {
 	if (sendto(sockfd, packet, sizeof(struct icmp), 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
 	{
 		error(EXIT_FAILURE, errno, "sendto");
 	}
+}
+
+void hex_print_icmp_packet_data(char *packet, int len)
+{
+	// separate the headers
+	struct ip *ip_hdr = (struct ip *)packet;
+
+	// print the packet data with different color for each header
+	printf("\033[0;31m");
+	for (int i = 0; i < (ip_hdr->ip_hl << 2); i++)
+	{
+		printf("%02x ", packet[i]);
+	}
+	printf("\033[0m");
+	printf("\033[0;34m");
+	for (int i = (ip_hdr->ip_hl << 2); i < len; i++)
+	{
+		printf("%02x ", packet[i]);
+	}
+	printf("\033[0m\n");
+
 }
 
 void get_reply(int sockfd, int seq)
@@ -80,6 +101,8 @@ void get_reply(int sockfd, int seq)
 	struct ip *ip_hdr = (struct ip *)buffer;
 	struct icmp *icmp_hdr = (struct icmp *)(buffer + (ip_hdr->ip_hl << 2));
 
+	hex_print_icmp_packet_data(buffer, count);
+	// print_ethernet_header(buffer, count);
 	printf("%d %d\n", seq, icmp_hdr->icmp_seq);
 
 	if (seq == icmp_hdr->icmp_seq && icmp_hdr->icmp_id == htons(g_ping.self_pid) && icmp_hdr->icmp_type == ICMP_ECHOREPLY)
@@ -117,6 +140,7 @@ int send_echo_requests(int sockfd)
 	while (1)
 	{
 		FD_SET(sockfd, &readfds);
+		bzero(packet, sizeof(struct icmp));
 		memcpy(packet, &icmp_hdr, sizeof(struct icmp));
 
 		send_request(sockfd, packet);
