@@ -118,12 +118,12 @@ void get_reply(int sockfd, int seq)
 	hex_print_icmp_packet_data(buffer, count);
 	// print_ethernet_header(buffer, count);
 	printf("ICMP_REPLY\n");
-	printf("icmp_hdr->type=%d\n", icmp_hdr->type);
-	printf("icmp_hdr->un.echo.id=%d\n", icmp_hdr->un.echo.id);
-	printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", icmp_hdr->un.echo.sequence, seq);
-	printf("icmp_hdr->checksum=0x%x\n", icmp_hdr->checksum);
+	printf("icmp_hdr->type=%d\n", ntohs(icmp_hdr->type));
+	printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
+	printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", ntohs(icmp_hdr->un.echo.sequence), seq);
+	printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
 
-	if (seq == icmp_hdr->un.echo.sequence && icmp_hdr->un.echo.id == htons(g_ping.self_pid) && icmp_hdr->type == ICMP_ECHOREPLY)
+	if (seq == icmp_hdr->un.echo.sequence && icmp_hdr->un.echo.id == ntohs((g_ping.self_pid) && icmp_hdr->type == ICMP_ECHOREPLY)
 	{
 		printf("Received packet\n");
 	}
@@ -154,8 +154,8 @@ int send_echo_requests(int sockfd)
 									  30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
 
 	struct icmphdr icmp_hdr = {
-		.type = ICMP_ECHO,
-		.code = 0,
+		.type = htons(ICMP_ECHO),
+		.code = htons(0),
 		.un.echo.id = htons(g_ping.self_pid),
 	};
 
@@ -170,7 +170,7 @@ int send_echo_requests(int sockfd)
 	{
 		FD_SET(sockfd, &readfds);
 		bzero(packet, sizeof(struct icmphdr));
-		icmp_hdr.un.echo.sequence = seq;
+		icmp_hdr.un.echo.sequence = htons(seq);
 		memcpy(packet, &icmp_hdr, sizeof(struct icmphdr));
 		gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
 		memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), chunk, PAYLOAD_CHUNK_SIZE);
@@ -179,11 +179,11 @@ int send_echo_requests(int sockfd)
 		packet[2] = cksum & 0xff;
 		packet[3] = cksum >> 8;
 
-		// printf("ICMP_ECHO\n");
-		// printf("icmp_hdr->type=%d\n", icmp_hdr.type);
-		// printf("icmp_hdr->un.echo.id=%d\n", icmp_hdr.un.echo.id);
-		// printf("icmp_hdr->un.echo.sequence=%d \n", icmp_hdr.un.echo.sequence);
-		// printf("icmp_hdr->checksum=0x%x\n", icmp_hdr.checksum);
+		printf("ICMP_ECHO\n");
+		printf("icmp_hdr->type=%d\n", icmp_hdr.type);
+		printf("icmp_hdr->un.echo.id=%d\n", icmp_hdr.un.echo.id);
+		printf("icmp_hdr->un.echo.sequence=%d \n", ntohs(icmp_hdr.un.echo.sequence));
+		printf("icmp_hdr->checksum=0x%x\n", icmp_hdr.checksum);
 
 		// printf("%ld %ld %ld PAYLOAD_CHUNK_SIZE=%ld\n", sizeof(struct icmphdr), sizeof(struct timeval), sizeof(packet), PAYLOAD_CHUNK_SIZE);
 		hex_print_data(packet, sizeof(struct icmphdr) + PAYLOAD_SIZE);
@@ -191,9 +191,9 @@ int send_echo_requests(int sockfd)
 		if ((select_ret = select(sockfd + 1, &readfds, NULL, NULL, NULL)) < 0)
 			error(EXIT_FAILURE, errno, "select");
 		else if (select_ret == 0)
-			printf("Request timeout for icmp_seq %d\n", icmp_hdr.un.echo.sequence);
+			printf("Request timeout for icmp_seq %d\n", seq);
 		else
-			get_reply(sockfd, icmp_hdr.un.echo.sequence);
+			get_reply(sockfd, seq);
 		sleep(1);
 
 		seq++;
