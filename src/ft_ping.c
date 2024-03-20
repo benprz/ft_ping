@@ -35,19 +35,19 @@ void print_struct_data()
 	printf("\n");
 }
 
-uint16_t calculate_checksum(uint16_t *icmp_hdr, int len)
+uint16_t calculate_checksum(uint16_t *packet, int len)
 {
 	uint32_t sum = 0;
 
 	// addition of 16-bits words
 	while (len > 1)
 	{
-		sum += *icmp_hdr++;
+		sum += *packet++;
 		len -= 2;
 	}
 	// if length is odd, add the last byte
 	if (len == 1)
-		sum += *(uint8_t *)icmp_hdr;
+		sum += *(uint8_t *)packet;
 
 	// add carry (high 16 bits to low 16 bits) until carry is zero
 	while (sum >> 16)
@@ -57,19 +57,22 @@ uint16_t calculate_checksum(uint16_t *icmp_hdr, int len)
 	return (uint16_t)(~sum);
 }
 
-void send_request(int sockfd, char *packet)
-{
-	if (sendto(sockfd, packet, sizeof(struct icmphdr), 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
-	{
-		error(EXIT_FAILURE, errno, "sendto");
-	}
-}
 
 void hex_print_data(char *packet, int len)
 {
 	// print the packet data with different color for each header
 	printf("\033[0;34m");
-	for (int i = 0; i < len; i++)
+	for (int i = 0; i < 8; i++)
+	{
+		printf("%02x ", packet[i]);
+	}
+	printf("\033[0;35m");
+	for (int i = 8; i < 24; i++)
+	{
+		printf("%02x ", packet[i]);
+	}
+	printf("\033[0;36m");
+	for (int i = 24; i < len; i++)
 	{
 		printf("%02x ", packet[i]);
 	}
@@ -114,18 +117,30 @@ void get_reply(int sockfd, int seq)
 
 	hex_print_icmp_packet_data(buffer, count);
 	// print_ethernet_header(buffer, count);
-	printf("%d %d\n", seq, icmp_hdr->icmp_seq);
+	printf("ICMP_REPLY\n");
+	printf("icmp_hdr->type=%d\n", icmp_hdr->type);
+	printf("icmp_hdr->un.echo.id=%d\n", icmp_hdr->un.echo.id);
+	printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", icmp_hdr->un.echo.sequence, seq);
+	printf("icmp_hdr->checksum=0x%x\n", icmp_hdr->checksum);
 
-	if (seq == icmp_hdr->icmp_seq && icmp_hdr->icmp_id == htons(g_ping.self_pid) && icmp_hdr->icmp_type == ICMP_ECHOREPLY)
+	if (seq == icmp_hdr->un.echo.sequence && icmp_hdr->un.echo.id == htons(g_ping.self_pid) && icmp_hdr->type == ICMP_ECHOREPLY)
 	{
 		printf("Received packet\n");
 	}
-	if (icmp_hdr->icmp_type == ICMP_ECHOREPLY &&
-		icmp_hdr->icmp_id == htons(g_ping.self_pid) &&
-		icmp_hdr->icmp_seq == seq)
+	if (icmp_hdr->type == ICMP_ECHOREPLY &&
+		icmp_hdr->un.echo.id == htons(g_ping.self_pid) &&
+		icmp_hdr->un.echo.sequence == seq)
 	{
 		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.2f ms\n",
 			   count, g_ping.hostip, seq, ip_hdr->ip_ttl, 0.0);
+	}
+}
+
+void send_request(int sockfd, char *packet)
+{
+	if (sendto(sockfd, packet, PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
+	{
+		error(EXIT_FAILURE, errno, "sendto");
 	}
 }
 
@@ -143,7 +158,6 @@ int send_echo_requests(int sockfd)
 		.code = 0,
 		.un.echo.id = htons(g_ping.self_pid),
 	};
-	icmp_hdr.checksum = calculate_checksum((uint16_t *)&icmp_hdr, sizeof(struct icmphdr));
 
 	printf("PING %s (%s): 56 data bytes\n", g_ping.hostarg, g_ping.hostip);
 
@@ -151,16 +165,27 @@ int send_echo_requests(int sockfd)
 	int select_ret;
 	FD_ZERO(&readfds);
 
+	int seq = 0;
 	while (1)
 	{
 		FD_SET(sockfd, &readfds);
-  		// struct timeval resp_time = {0, 0};
 		bzero(packet, sizeof(struct icmphdr));
+		icmp_hdr.un.echo.sequence = seq;
 		memcpy(packet, &icmp_hdr, sizeof(struct icmphdr));
 		gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
 		memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), chunk, PAYLOAD_CHUNK_SIZE);
 
-		printf("%ld\n", sizeof(struct icmphdr));
+		uint16_t cksum = calculate_checksum((uint16_t *)packet, PACKET_SIZE);
+		packet[2] = cksum & 0xff;
+		packet[3] = cksum >> 8;
+
+		// printf("ICMP_ECHO\n");
+		// printf("icmp_hdr->type=%d\n", icmp_hdr.type);
+		// printf("icmp_hdr->un.echo.id=%d\n", icmp_hdr.un.echo.id);
+		// printf("icmp_hdr->un.echo.sequence=%d \n", icmp_hdr.un.echo.sequence);
+		// printf("icmp_hdr->checksum=0x%x\n", icmp_hdr.checksum);
+
+		// printf("%ld %ld %ld PAYLOAD_CHUNK_SIZE=%ld\n", sizeof(struct icmphdr), sizeof(struct timeval), sizeof(packet), PAYLOAD_CHUNK_SIZE);
 		hex_print_data(packet, sizeof(struct icmphdr) + PAYLOAD_SIZE);
 		send_request(sockfd, packet);
 		if ((select_ret = select(sockfd + 1, &readfds, NULL, NULL, NULL)) < 0)
@@ -171,7 +196,7 @@ int send_echo_requests(int sockfd)
 			get_reply(sockfd, icmp_hdr.un.echo.sequence);
 		sleep(1);
 
-		icmp_hdr.icmp_seq++;
+		seq++;
 	}
 }
 
