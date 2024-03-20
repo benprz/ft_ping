@@ -18,7 +18,13 @@
 //icmp_hdr
 #include <netinet/ip_icmp.h>
 
+//gettimeofday
+#include <sys/time.h>
+
 #define UNUSED(x) (void)x
+
+#define PAYLOAD_SIZE 56
+#define PAYLOAD_CHUNK_SIZE PAYLOAD_SIZE - sizeof(struct timeval)
 
 struct s_ping
 {

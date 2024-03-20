@@ -59,10 +59,21 @@ uint16_t calculate_checksum(uint16_t *icmp_hdr, int len)
 
 void send_request(int sockfd, char *packet)
 {
-	if (sendto(sockfd, packet, sizeof(struct icmp), 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
+	if (sendto(sockfd, packet, sizeof(struct icmphdr), 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
 	{
 		error(EXIT_FAILURE, errno, "sendto");
 	}
+}
+
+void hex_print_data(char *packet, int len)
+{
+	// print the packet data with different color for each header
+	printf("\033[0;34m");
+	for (int i = 0; i < len; i++)
+	{
+		printf("%02x ", packet[i]);
+	}
+	printf("\033[0m\n");
 }
 
 void hex_print_icmp_packet_data(char *packet, int len)
@@ -99,7 +110,7 @@ void get_reply(int sockfd, int seq)
 	}
 
 	struct ip *ip_hdr = (struct ip *)buffer;
-	struct icmp *icmp_hdr = (struct icmp *)(buffer + (ip_hdr->ip_hl << 2));
+	struct icmphdr *icmp_hdr = (struct icmphdr *)(buffer + (ip_hdr->ip_hl << 2));
 
 	hex_print_icmp_packet_data(buffer, count);
 	// print_ethernet_header(buffer, count);
@@ -120,36 +131,44 @@ void get_reply(int sockfd, int seq)
 
 int send_echo_requests(int sockfd)
 {
-	char packet[sizeof(struct icmp)];
+	char packet[sizeof(struct icmphdr) + PAYLOAD_SIZE];
 
-	struct icmp icmp_hdr = {
-		.icmp_type = ICMP_ECHO,
-		.icmp_code = 0,
-		.icmp_cksum = 0,
-		.icmp_id = htons(g_ping.self_pid),
-		.icmp_seq = 0,
+	char chunk[PAYLOAD_CHUNK_SIZE] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+									  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+									  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+									  30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
+
+	struct icmphdr icmp_hdr = {
+		.type = ICMP_ECHO,
+		.code = 0,
+		.un.echo.id = htons(g_ping.self_pid),
 	};
-	icmp_hdr.icmp_cksum = calculate_checksum((uint16_t *)&icmp_hdr, sizeof(struct icmp));
+	icmp_hdr.checksum = calculate_checksum((uint16_t *)&icmp_hdr, sizeof(struct icmphdr));
 
 	printf("PING %s (%s): 56 data bytes\n", g_ping.hostarg, g_ping.hostip);
 
 	fd_set readfds;
-	int ret;
+	int select_ret;
 	FD_ZERO(&readfds);
 
 	while (1)
 	{
 		FD_SET(sockfd, &readfds);
-		bzero(packet, sizeof(struct icmp));
-		memcpy(packet, &icmp_hdr, sizeof(struct icmp));
+  		// struct timeval resp_time = {0, 0};
+		bzero(packet, sizeof(struct icmphdr));
+		memcpy(packet, &icmp_hdr, sizeof(struct icmphdr));
+		gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
+		memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), chunk, PAYLOAD_CHUNK_SIZE);
 
+		printf("%ld\n", sizeof(struct icmphdr));
+		hex_print_data(packet, sizeof(struct icmphdr) + PAYLOAD_SIZE);
 		send_request(sockfd, packet);
-		if ((ret = select(sockfd + 1, &readfds, NULL, NULL, NULL)) < 0)
+		if ((select_ret = select(sockfd + 1, &readfds, NULL, NULL, NULL)) < 0)
 			error(EXIT_FAILURE, errno, "select");
-		else if (ret == 0)
-			printf("Request timeout for icmp_seq %d\n", icmp_hdr.icmp_seq);
+		else if (select_ret == 0)
+			printf("Request timeout for icmp_seq %d\n", icmp_hdr.un.echo.sequence);
 		else
-			get_reply(sockfd, icmp_hdr.icmp_seq);
+			get_reply(sockfd, icmp_hdr.un.echo.sequence);
 		sleep(1);
 
 		icmp_hdr.icmp_seq++;
