@@ -100,6 +100,15 @@ void hex_print_icmp_packet_data(char *packet, int len)
 
 }
 
+float calculate_delay(char *buffer)
+{
+	struct timeval *tv_packet = (struct timeval*)(buffer + sizeof(struct ip) + sizeof(struct icmphdr));
+	struct timeval tv_now;
+
+	gettimeofday(&tv_now, NULL);
+	return tv_now.tv_sec - tv_packet->tv_sec + (tv_now.tv_usec - tv_packet->tv_usec) / 1000.0;
+}
+
 void get_reply(int sockfd, int seq)
 {
 	char buffer[1024];
@@ -118,27 +127,23 @@ void get_reply(int sockfd, int seq)
 	hex_print_icmp_packet_data(buffer, count);
 	// print_ethernet_header(buffer, count);
 	printf("ICMP_REPLY\n");
-	printf("icmp_hdr->type=%d\n", ntohs(icmp_hdr->type));
+	printf("icmp_hdr->type=%d\n", icmp_hdr->type);
 	printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
 	printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", ntohs(icmp_hdr->un.echo.sequence), seq);
 	printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
 
-	if (seq == icmp_hdr->un.echo.sequence && icmp_hdr->un.echo.id == ntohs((g_ping.self_pid) && icmp_hdr->type == ICMP_ECHOREPLY)
-	{
-		printf("Received packet\n");
-	}
 	if (icmp_hdr->type == ICMP_ECHOREPLY &&
-		icmp_hdr->un.echo.id == htons(g_ping.self_pid) &&
-		icmp_hdr->un.echo.sequence == seq)
+		ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid &&
+		ntohs(icmp_hdr->un.echo.sequence) == seq)
 	{
-		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.2f ms\n",
-			   count, g_ping.hostip, seq, ip_hdr->ip_ttl, 0.0);
+		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+			   count - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, calculate_delay(buffer));
 	}
 }
 
 void send_request(int sockfd, char *packet)
 {
-	if (sendto(sockfd, packet, PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
+	if (sendto(sockfd, packet, ICMP_PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
 	{
 		error(EXIT_FAILURE, errno, "sendto");
 	}
@@ -146,20 +151,20 @@ void send_request(int sockfd, char *packet)
 
 int send_echo_requests(int sockfd)
 {
-	char packet[sizeof(struct icmphdr) + PAYLOAD_SIZE];
+	char packet[sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE];
 
-	char chunk[PAYLOAD_CHUNK_SIZE] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+	char chunk[ICMP_PAYLOAD_CHUNK_SIZE] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
 									  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 									  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
 									  30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
 
 	struct icmphdr icmp_hdr = {
-		.type = htons(ICMP_ECHO),
-		.code = htons(0),
+		.type = ICMP_ECHO,
+		.code = 0,
 		.un.echo.id = htons(g_ping.self_pid),
 	};
 
-	printf("PING %s (%s): 56 data bytes\n", g_ping.hostarg, g_ping.hostip);
+	printf("PING %s (%s): %ld data bytes\n", g_ping.hostarg, g_ping.hostip, ICMP_PAYLOAD_SIZE);
 
 	fd_set readfds;
 	int select_ret;
@@ -173,20 +178,21 @@ int send_echo_requests(int sockfd)
 		icmp_hdr.un.echo.sequence = htons(seq);
 		memcpy(packet, &icmp_hdr, sizeof(struct icmphdr));
 		gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
-		memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), chunk, PAYLOAD_CHUNK_SIZE);
+		memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), chunk, ICMP_PAYLOAD_CHUNK_SIZE);
 
-		uint16_t cksum = calculate_checksum((uint16_t *)packet, PACKET_SIZE);
-		packet[2] = cksum & 0xff;
-		packet[3] = cksum >> 8;
+		icmp_hdr.checksum = calculate_checksum((uint16_t *)packet, ICMP_PACKET_SIZE);
+		//big endian
+		packet[2] = icmp_hdr.checksum & 0xff;
+		packet[3] = icmp_hdr.checksum >> 8;
 
+		printf("\n");
 		printf("ICMP_ECHO\n");
 		printf("icmp_hdr->type=%d\n", icmp_hdr.type);
-		printf("icmp_hdr->un.echo.id=%d\n", icmp_hdr.un.echo.id);
+		printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr.un.echo.id));
 		printf("icmp_hdr->un.echo.sequence=%d \n", ntohs(icmp_hdr.un.echo.sequence));
-		printf("icmp_hdr->checksum=0x%x\n", icmp_hdr.checksum);
+		printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr.checksum));
 
-		// printf("%ld %ld %ld PAYLOAD_CHUNK_SIZE=%ld\n", sizeof(struct icmphdr), sizeof(struct timeval), sizeof(packet), PAYLOAD_CHUNK_SIZE);
-		hex_print_data(packet, sizeof(struct icmphdr) + PAYLOAD_SIZE);
+		hex_print_data(packet, sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE);
 		send_request(sockfd, packet);
 		if ((select_ret = select(sockfd + 1, &readfds, NULL, NULL, NULL)) < 0)
 			error(EXIT_FAILURE, errno, "select");

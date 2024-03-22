@@ -26,6 +26,16 @@ $(OBJ_DIR)%.o: $(SRC_DIR)%.c $(addprefix $(INC_DIR),$(INC))
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@ -I $(INC_DIR)
 
+launch_container:
+	docker build . -t ft_ping
+	docker run --cap-add=NET_ADMIN -it -v ./:/shared --name ft_ping ft_ping /bin/bash
+
+shell:
+	docker exec -it ft_ping /bin/bash
+
+rm_container:
+	docker container prune
+
 clean:
 	@/bin/rm -rf $(OBJ_DIR)
 

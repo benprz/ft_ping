@@ -23,9 +23,11 @@
 
 #define UNUSED(x) (void)x
 
-#define PACKET_SIZE 64
-#define PAYLOAD_SIZE PACKET_SIZE - sizeof(struct icmphdr)
-#define PAYLOAD_CHUNK_SIZE PAYLOAD_SIZE - sizeof(struct timeval)
+#define PACKET_SIZE IP_HEADER_SIZE + ICMP_PACKET_SIZE
+#define IP_HEADER_SIZE sizeof(struct ip)
+#define ICMP_PACKET_SIZE 64
+#define ICMP_PAYLOAD_SIZE ICMP_PACKET_SIZE - sizeof(struct icmphdr)
+#define ICMP_PAYLOAD_CHUNK_SIZE ICMP_PAYLOAD_SIZE - sizeof(struct timeval)
 
 struct s_ping
 {
