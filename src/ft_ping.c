@@ -58,7 +58,7 @@ uint16_t calculate_checksum(uint16_t *packet, int len)
 }
 
 
-void hex_print_data(char *packet, int len)
+void hex_print_data(unsigned char *packet, int len)
 {
 	// print the packet data with different color for each header
 	printf("\033[0;34m");
@@ -79,7 +79,7 @@ void hex_print_data(char *packet, int len)
 	printf("\033[0m\n");
 }
 
-void hex_print_icmp_packet_data(char *packet, int len)
+void hex_print_icmp_packet_data(unsigned char *packet, int len)
 {
 	// separate the headers
 	struct ip *ip_hdr = (struct ip *)packet;
@@ -100,7 +100,7 @@ void hex_print_icmp_packet_data(char *packet, int len)
 
 }
 
-float calculate_delay(char *buffer)
+float calculate_delay(unsigned char *buffer)
 {
 	struct timeval *tv_packet = (struct timeval*)(buffer + sizeof(struct ip) + sizeof(struct icmphdr));
 	struct timeval tv_now;
@@ -111,7 +111,7 @@ float calculate_delay(char *buffer)
 
 void get_reply(int sockfd, int seq)
 {
-	char buffer[1024];
+	unsigned char buffer[1024];
 	struct sockaddr_storage src_addr;
 	socklen_t src_addr_len = sizeof(src_addr);
 	ssize_t count;
@@ -141,7 +141,7 @@ void get_reply(int sockfd, int seq)
 	}
 }
 
-void send_request(int sockfd, char *packet)
+void send_request(int sockfd, unsigned char *packet)
 {
 	if (sendto(sockfd, packet, ICMP_PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
 	{
@@ -151,12 +151,22 @@ void send_request(int sockfd, char *packet)
 
 int send_echo_requests(int sockfd)
 {
-	char packet[sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE];
+	unsigned char packet[ICMP_PACKET_SIZE];
 
-	char chunk[ICMP_PAYLOAD_CHUNK_SIZE] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+	unsigned char chunk[ICMP_PAYLOAD_CHUNK_SIZE] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
 									  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 									  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
 									  30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
+	
+    unsigned char data[] = {
+        0x08, 0x00, 0x00, 0, 0x01, 0x78, 0x00, 0x01, 0x4d, 0xdb, 0x02, 0x66, 0x00, 0x00, 0x00, 0x00,
+        0x30, 0x47, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
+    };
+
+	printf("data checksum: 0x%x\n", calculate_checksum((uint16_t *)data, sizeof(data)));
+	
 
 	struct icmphdr icmp_hdr = {
 		.type = ICMP_ECHO,
@@ -174,16 +184,16 @@ int send_echo_requests(int sockfd)
 	while (1)
 	{
 		FD_SET(sockfd, &readfds);
-		bzero(packet, sizeof(struct icmphdr));
+		bzero(packet, sizeof(packet));
 		icmp_hdr.un.echo.sequence = htons(seq);
 		memcpy(packet, &icmp_hdr, sizeof(struct icmphdr));
 		gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
 		memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), chunk, ICMP_PAYLOAD_CHUNK_SIZE);
 
-		icmp_hdr.checksum = calculate_checksum((uint16_t *)packet, ICMP_PACKET_SIZE);
+		uint16_t checksum = calculate_checksum((uint16_t *)packet, ICMP_PACKET_SIZE);
 		//big endian
-		packet[2] = icmp_hdr.checksum & 0xff;
-		packet[3] = icmp_hdr.checksum >> 8;
+		packet[2] = checksum & 0xff;
+		packet[3] = checksum >> 8;
 
 		printf("\n");
 		printf("ICMP_ECHO\n");
