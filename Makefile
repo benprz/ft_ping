@@ -4,12 +4,15 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Werror -Wpedantic -g
 CDEBUGFLAGS = -g
 INC_DIR = inc/
+INC = ft_ping.h
 
 EXE = ft_ping
 
 SRC_DIR = src/
 SRC =	main.c\
-		ft_ping.c
+		ft_ping.c\
+		signal.c\
+		stats.c
 
 OBJ_DIR = .obj/
 OBJ = $(SRC:%.c=$(OBJ_DIR)%.o)

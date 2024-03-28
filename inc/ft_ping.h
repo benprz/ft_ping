@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <signal.h>
 #include <error.h>
 
 //getaddrinfo
@@ -21,6 +22,7 @@
 //gettimeofday
 #include <sys/time.h>
 
+
 #define UNUSED(x) (void)x
 
 #define PACKET_SIZE IP_HEADER_SIZE + ICMP_PACKET_SIZE
@@ -36,8 +38,13 @@ struct s_ping
     struct addrinfo *host;
     bool verbose;
     pid_t self_pid;
+    bool loop;
 };
 
 extern struct s_ping g_ping;
+
+
+void signal_handler(int);
+void print_stats();
 
 int ft_ping();

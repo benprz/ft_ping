@@ -11,7 +11,7 @@ const char doc[] = "Send ICMP ECHO_REQUEST packets to network hosts."
 				   "\vOptions marked with (root only) are available only to "
 				   "superuser.";
 
-struct s_ping g_ping = {NULL, {0}, NULL, false, 0};
+struct s_ping g_ping = {NULL, {0}, NULL, false, 0, true};
 
 int parse_host(char *host)
 {
