@@ -37,6 +37,7 @@ struct s_ping
     char hostip[INET_ADDRSTRLEN];
     struct addrinfo *host;
     bool verbose;
+    int sockfd;
     pid_t self_pid;
     bool loop;
 };
