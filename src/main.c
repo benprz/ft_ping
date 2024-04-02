@@ -11,7 +11,15 @@ const char doc[] = "Send ICMP ECHO_REQUEST packets to network hosts."
 				   "\vOptions marked with (root only) are available only to "
 				   "superuser.";
 
-struct s_ping g_ping = {NULL, {0}, NULL, false, 0, true};
+struct s_ping g_ping = {
+	NULL, //hostarg
+	{0}, //hostip
+	NULL, //host
+	false, //verbose
+	0, //sockfd
+	0, //selfpid
+	true //loop
+};
 
 int parse_host(char *host)
 {
@@ -57,11 +65,11 @@ int parse_options(int key, char *arg, struct argp_state *state)
 
 int main(int argc, char **argv)
 {
-	// if (getuid() != 0)
-	// {
-	//     printf("You must be root to use ping\n");
-	//     return (1);
-	// }
+	if (getuid() != 0)
+	{
+	    printf("You must be root to use ping\n");
+	    return (1);
+	}
 
 	// argp
 	struct argp_option options[] = {

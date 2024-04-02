@@ -109,7 +109,7 @@ float calculate_delay(unsigned char *buffer)
 	return tv_now.tv_sec - tv_packet->tv_sec + (tv_now.tv_usec - tv_packet->tv_usec) / 1000.0;
 }
 
-int get_reply(int sockfd, int seq)
+int get_reply(int seq)
 {
 	// printf("Getting reply....");
 	unsigned char buffer[1024];
@@ -117,7 +117,7 @@ int get_reply(int sockfd, int seq)
 	socklen_t src_addr_len = sizeof(src_addr);
 	ssize_t count;
 
-	if ((count = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&src_addr, &src_addr_len)) < 0)
+	if ((count = recvfrom(g_ping.sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&src_addr, &src_addr_len)) < 0)
 	{
 		error(EXIT_FAILURE, errno, "recvfrom");
 	}
@@ -125,7 +125,7 @@ int get_reply(int sockfd, int seq)
 	struct icmphdr *icmp_hdr = (struct icmphdr *)(buffer + (ip_hdr->ip_hl << 2));
 
 	hex_print_icmp_packet_data(buffer, count);
-	printf("ICMP\n");
+	printf("ICMP_REPLY\n");
 	printf("icmp_hdr->type=%d\n", icmp_hdr->type);
 	printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
 	printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", ntohs(icmp_hdr->un.echo.sequence), seq);
@@ -138,8 +138,8 @@ int get_reply(int sockfd, int seq)
 	if (ntohs(icmp_hdr->un.echo.sequence) == seq)
 		printf("seq yes\n");
 	if (icmp_hdr->type == ICMP_ECHOREPLY &&
-		ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid &&
-		ntohs(icmp_hdr->un.echo.sequence) == seq)
+		ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)// &&
+		// ntohs(icmp_hdr->un.echo.sequence) == seq)
 	{
 		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
 			   count - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, calculate_delay(buffer));
@@ -150,13 +150,14 @@ int get_reply(int sockfd, int seq)
 
 void send_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 {
-	bzero(packet, sizeof(packet));
-	printf("seq=%d\n", *seq);
-	icmp_hdr->un.echo.sequence = htons(seq);
-	printf("packet seq=%d\n", ntohs(icmp_hdr->un.echo.sequence));
-	memcpy(packet, &icmp_hdr, sizeof(struct icmphdr));
+	bzero(packet, ICMP_PACKET_SIZE);
+	// printf("seq=%d\n", *seq);
+	icmp_hdr->un.echo.sequence = htons(*seq);
+	// printf("packet seq=%d\n", ntohs(icmp_hdr->un.echo.sequence));
+	memcpy(packet, icmp_hdr, sizeof(struct icmphdr));
 	gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
-	memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), chunk, ICMP_PAYLOAD_CHUNK_SIZE);
+
+	memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), ICMP_PAYLOAD_CHUNK, ICMP_PAYLOAD_CHUNK_SIZE);
 
 	uint16_t checksum = calculate_checksum((uint16_t *)packet, ICMP_PACKET_SIZE);
 	//big endian
@@ -170,8 +171,8 @@ void send_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 	printf("icmp_hdr->un.echo.sequence=%d \n", ntohs(icmp_hdr->un.echo.sequence));
 	printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
 
-	// hex_print_data(packet, sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE);
-	printf("send request\n");
+	hex_print_data(packet, sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE);
+	// printf("send request\n");
 	if (sendto(g_ping.sockfd, packet, ICMP_PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
 	{
 		error(EXIT_FAILURE, errno, "sendto");
@@ -182,14 +183,9 @@ int send_echo_requests()
 {
 	unsigned char packet[ICMP_PACKET_SIZE];
 
-	unsigned char chunk[ICMP_PAYLOAD_CHUNK_SIZE] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-									  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-									  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-									  30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
-
 	struct icmphdr icmp_hdr = {
 		.type = ICMP_ECHO, // no need htons coz its a byte
-		.code = htons(0), // same
+		.code = 0, // same
 		.un.echo.id = htons(g_ping.self_pid),
 	};
 
@@ -208,7 +204,10 @@ int send_echo_requests()
 		if ((select_ret = select(g_ping.sockfd + 1, &readfds, NULL, NULL, &tv)) < 0)
 			error(EXIT_FAILURE, errno, "select");
 		else if (select_ret == 0) //timeout
+		{
 			send_request(&icmp_hdr, packet, &seq);
+			seq++;
+		}
 		else
 			get_reply(seq);
 	}
