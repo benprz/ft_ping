@@ -124,25 +124,26 @@ int get_reply(int seq)
 	struct ip *ip_hdr = (struct ip *)buffer;
 	struct icmphdr *icmp_hdr = (struct icmphdr *)(buffer + (ip_hdr->ip_hl << 2));
 
-	hex_print_icmp_packet_data(buffer, count);
-	printf("ICMP_REPLY\n");
-	printf("icmp_hdr->type=%d\n", icmp_hdr->type);
-	printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
-	printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", ntohs(icmp_hdr->un.echo.sequence), seq);
-	printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
+	// hex_print_icmp_packet_data(buffer, count);
+	// printf("ICMP_REPLY\n");
+	// printf("icmp_hdr->type=%d\n", icmp_hdr->type);
+	// printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
+	// printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", ntohs(icmp_hdr->un.echo.sequence), seq);
+	// printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
 
-	if (icmp_hdr->type == ICMP_ECHOREPLY)
-		printf("type yes\n");
-	if (ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)
-		printf("id yes\n");
-	if (ntohs(icmp_hdr->un.echo.sequence) == seq)
-		printf("seq yes\n");
+	// if (icmp_hdr->type == ICMP_ECHOREPLY)
+	// 	printf("type yes\n");
+	// if (ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)
+	// 	printf("id yes\n");
+	// if (ntohs(icmp_hdr->un.echo.sequence) == seq)
+	// 	printf("seq yes\n");
 	if (icmp_hdr->type == ICMP_ECHOREPLY &&
 		ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)// &&
 		// ntohs(icmp_hdr->un.echo.sequence) == seq)
 	{
 		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
 			   count - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, calculate_delay(buffer));
+		g_ping.received_packets++;
 		return 1;
 	}
 	return 0;
@@ -164,19 +165,19 @@ void send_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 	packet[2] = checksum & 0xff; // second byte
 	packet[3] = checksum >> 8; // first byte
 
-	printf("\n");
-	printf("ICMP_ECHO\n");
-	printf("icmp_hdr->type=%d\n", icmp_hdr->type);
-	printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
-	printf("icmp_hdr->un.echo.sequence=%d \n", ntohs(icmp_hdr->un.echo.sequence));
-	printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
-
-	hex_print_data(packet, sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE);
+	// printf("\n");
+	// printf("ICMP_ECHO\n");
+	// printf("icmp_hdr->type=%d\n", icmp_hdr->type);
+	// printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
+	// printf("icmp_hdr->un.echo.sequence=%d \n", ntohs(icmp_hdr->un.echo.sequence));
+	// printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
+	// hex_print_data(packet, sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE);
 	// printf("send request\n");
 	if (sendto(g_ping.sockfd, packet, ICMP_PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
 	{
 		error(EXIT_FAILURE, errno, "sendto");
 	}
+	g_ping.sent_packets++;
 }
 
 int send_echo_requests()
@@ -196,13 +197,17 @@ int send_echo_requests()
 	FD_ZERO(&readfds);
 
 	int seq = 0;
+	send_request(&icmp_hdr, packet, &seq);
 	while (g_ping.loop == true)
 	{
 		FD_SET(g_ping.sockfd, &readfds);
 
 		struct timeval tv = {1, 0};
 		if ((select_ret = select(g_ping.sockfd + 1, &readfds, NULL, NULL, &tv)) < 0)
-			error(EXIT_FAILURE, errno, "select");
+		{
+			if (errno != EINTR)
+				error(EXIT_FAILURE, errno, "select");
+		}
 		else if (select_ret == 0) //timeout
 		{
 			send_request(&icmp_hdr, packet, &seq);
@@ -211,11 +216,10 @@ int send_echo_requests()
 		else
 			get_reply(seq);
 	}
-	print_stats();
 	return 0;
 }
 
-int ft_ping()
+void ft_ping()
 {
 	if ((g_ping.sockfd = socket(g_ping.host->ai_family, SOCK_RAW, IPPROTO_ICMP)) < 0)
 	{
@@ -227,6 +231,7 @@ int ft_ping()
 	struct sigaction action;
 	action.sa_handler = signal_handler;
 	sigaction(SIGINT, &action, NULL);
-
-	return send_echo_requests();
+	
+	send_echo_requests();
+	print_stats();
 }

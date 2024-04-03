@@ -16,9 +16,13 @@ struct s_ping g_ping = {
 	{0}, //hostip
 	NULL, //host
 	false, //verbose
+
 	0, //sockfd
 	0, //selfpid
-	true //loop
+	true, //loop
+
+	0, //sent_packets
+	0, //received_packets
 };
 
 int parse_host(char *host)
@@ -79,5 +83,6 @@ int main(int argc, char **argv)
 	struct argp argp = {options, parse_options, args_doc, doc, 0, 0, 0};
 	argp_parse(&argp, argc, argv, 0, 0, 0);
 
-	return ft_ping();
+	ft_ping();
+	return 0;
 }

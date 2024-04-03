@@ -41,9 +41,13 @@ struct s_ping
     char hostip[INET_ADDRSTRLEN];
     struct addrinfo *host;
     bool verbose;
+
     int sockfd;
     pid_t self_pid;
     bool loop;
+
+	int sent_packets;
+	int received_packets;
 };
 
 extern struct s_ping g_ping;
@@ -52,4 +56,4 @@ extern struct s_ping g_ping;
 void signal_handler(int);
 void print_stats();
 
-int ft_ping();
+void ft_ping();
