@@ -100,7 +100,7 @@ void hex_print_icmp_packet_data(unsigned char *packet, int len)
 
 }
 
-float calculate_delay(unsigned char *buffer)
+float calculate_round_trip(unsigned char *buffer)
 {
 	struct timeval *tv_packet = (struct timeval*)(buffer + sizeof(struct ip) + sizeof(struct icmphdr));
 	struct timeval tv_now;
@@ -141,9 +141,14 @@ int get_reply(int seq)
 		ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)// &&
 		// ntohs(icmp_hdr->un.echo.sequence) == seq)
 	{
+		float round_trip = calculate_round_trip(buffer);
 		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
-			   count - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, calculate_delay(buffer));
+			   count - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, round_trip);
 		g_ping.received_packets++;
+		if (round_trip < g_ping.round_trip_min || g_ping.round_trip_min == -1)
+			g_ping.round_trip_min = round_trip;
+		if (round_trip >  g_ping.round_trip_max || g_ping.round_trip_max == -1)
+			g_ping.round_trip_max = round_trip;
 		return 1;
 	}
 	return 0;

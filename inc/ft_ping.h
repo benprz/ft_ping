@@ -48,6 +48,8 @@ struct s_ping
 
 	int sent_packets;
 	int received_packets;
+    float round_trip_min;
+    float round_trip_max;
 };
 
 extern struct s_ping g_ping;
