@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <error.h>
+#include <math.h>
 
 //getaddrinfo
 #include <sys/types.h>
@@ -50,6 +51,7 @@ struct s_ping
 	int received_packets;
     float round_trip_min;
     float round_trip_max;
+    float round_trip_squared_sigma;
 };
 
 extern struct s_ping g_ping;

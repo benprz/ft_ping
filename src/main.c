@@ -23,8 +23,9 @@ struct s_ping g_ping = {
 
 	0, //sent_packets
 	0, //received_packets
-	-1, //round-trip min
-	-1, //round_trip max
+	-1, //round_trip_min
+	-1, //round_trip_max
+	0, //round_trip_squared_sigma
 };
 
 int parse_host(char *host)
