@@ -6,6 +6,7 @@
         "netdb.h": "c",
         "stdint-uintn.h": "c",
         "ip_icmp.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "math.h": "c"
     }
 }

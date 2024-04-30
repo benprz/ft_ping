@@ -126,7 +126,7 @@ int get_reply(int seq)
 
 	// hex_print_icmp_packet_data(buffer, count);
 	// printf("ICMP_REPLY\n");
-	// printf("icmp_hdr->type=%d\n", icmp_hdr->type);
+	// printf("icmp_hdr->type=%d\n", icmp_hdr->type);	
 	// printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
 	// printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", ntohs(icmp_hdr->un.echo.sequence), seq);
 	// printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
@@ -141,15 +141,16 @@ int get_reply(int seq)
 		ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)// &&
 		// ntohs(icmp_hdr->un.echo.sequence) == seq)
 	{
+		g_ping.received_packets++;
+
 		float round_trip = calculate_round_trip(buffer);
 		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
 			   count - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, round_trip);
-		g_ping.received_packets++;
 		if (round_trip < g_ping.round_trip_min || g_ping.round_trip_min == -1)
 			g_ping.round_trip_min = round_trip;
 		if (round_trip >  g_ping.round_trip_max || g_ping.round_trip_max == -1)
 			g_ping.round_trip_max = round_trip;
-		g_ping.round_trip_squared_sigma += pow(round_trip, 2);
+		g_ping.round_trip_squared_sigma += powf(round_trip, 2);
 		return 1;
 	}
 	return 0;
@@ -186,6 +187,13 @@ void send_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 	g_ping.sent_packets++;
 }
 
+void print_header() {
+	printf("PING %s (%s): %ld data bytes", g_ping.hostarg, g_ping.hostip, ICMP_PAYLOAD_SIZE);
+	if (g_ping.verbose)
+		printf(", id 0x%04x = %u", g_ping.self_pid, g_ping.self_pid);
+	printf("\n");
+}
+
 int send_echo_requests()
 {
 	unsigned char packet[ICMP_PACKET_SIZE];
@@ -196,7 +204,7 @@ int send_echo_requests()
 		.un.echo.id = htons(g_ping.self_pid),
 	};
 
-	printf("PING %s (%s): %ld data bytes\n", g_ping.hostarg, g_ping.hostip, ICMP_PAYLOAD_SIZE);
+	print_header();
 
 	fd_set readfds;
 	int select_ret;
