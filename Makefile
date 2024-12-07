@@ -29,9 +29,9 @@ $(OBJ_DIR)%.o: $(SRC_DIR)%.c $(addprefix $(INC_DIR),$(INC))
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@ -I $(INC_DIR)
 
-run_container:
+container:
 	docker build . -t ft_ping
-	docker run --cap-add=NET_ADMIN -it -v ./:/shared --name ft_ping ft_ping /bin/bash
+	docker run -d --rm --cap-add=NET_ADMIN --network host -v ./:/shared --name ft_ping ft_ping
 
 shell:
 	docker exec -it ft_ping /bin/bash

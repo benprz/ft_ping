@@ -51,6 +51,7 @@ struct s_ping
 	int received_packets;
     float round_trip_min;
     float round_trip_max;
+    float round_trip_sigma;
     float round_trip_squared_sigma;
 };
 

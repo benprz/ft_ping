@@ -1,0 +1,36 @@
+
+ft_ping Project
+
+Recreate the `ping` command functionality.
+
+---
+
+General Requirements:
+1. Use a Debian VM (>=7.0).
+2. Write the project in C with a Makefile (usual rules, recompile only if needed).
+3. Handle errors carefully; no crashes allowed (e.g., segmentation faults).
+4. Forbidden functions: execve, ping, fcntl, poll, ppoll.
+5. Use libc and printf functions.
+
+---
+
+Mandatory Features:
+1. Name the executable `ft_ping`.
+2. Reference: ping from inetutils-2.0 (ping -V).
+3. Manage:
+   - IPv4 address/hostname as input.
+   - FQDN without DNS resolution in packet return.
+   - Flags: -v and -?.
+
+---
+
+Bonus Ideas:
+- Additional flags: -f, -l, -n, -w, -W, -p, -r, -s, -T, --ttl, --ip-timestamp.
+- No credit if mandatory requirements aren't perfect.
+
+---
+
+Submission:
+- Submit via Git repository.
+- Test in VM with Linux kernel > 3.14 (based on Debian 7.0).
+- Ensure results match inetutils-2.0 output, excluding RTT and reverse DNS resolution.

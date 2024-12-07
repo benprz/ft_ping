@@ -150,6 +150,7 @@ int get_reply(int seq)
 			g_ping.round_trip_min = round_trip;
 		if (round_trip >  g_ping.round_trip_max || g_ping.round_trip_max == -1)
 			g_ping.round_trip_max = round_trip;
+		g_ping.round_trip_sigma += round_trip;
 		g_ping.round_trip_squared_sigma += powf(round_trip, 2);
 		return 1;
 	}

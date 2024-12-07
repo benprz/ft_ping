@@ -25,6 +25,7 @@ struct s_ping g_ping = {
 	0, //received_packets
 	-1, //round_trip_min
 	-1, //round_trip_max
+	0, //round_trip_sigma
 	0, //round_trip_squared_sigma
 };
 
@@ -74,7 +75,7 @@ int main(int argc, char **argv)
 {
 	if (getuid() != 0)
 	{
-	    printf("You must be root to use ping\n");
+	    printf("You must be root to use ft_ping\n");
 	    return (1);
 	}
 
