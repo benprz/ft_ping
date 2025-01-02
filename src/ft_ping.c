@@ -106,7 +106,7 @@ float calculate_round_trip(unsigned char *buffer)
 	struct timeval tv_now;
 
 	gettimeofday(&tv_now, NULL);
-	return tv_now.tv_sec - tv_packet->tv_sec + (tv_now.tv_usec - tv_packet->tv_usec) / 1000.0;
+	return (tv_now.tv_sec - tv_packet->tv_sec) * 1000.0 + (tv_now.tv_usec - tv_packet->tv_usec) / 1000.0;
 }
 
 int get_reply(int seq)
@@ -243,7 +243,7 @@ void ft_ping()
 
 	g_ping.self_pid = getpid();
 
-	struct sigaction action;
+	struct sigaction action = {0};
 	action.sa_handler = signal_handler;
 	sigaction(SIGINT, &action, NULL);
 	

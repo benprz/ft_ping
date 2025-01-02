@@ -1,11 +1,11 @@
 #include "ft_ping.h"
 
 float calculate_round_trip_stddev(float round_trip_avg) {
-    printf("received packets : %d\n", g_ping.received_packets);
-    printf("round-trip squared sigma = %f\n", g_ping.round_trip_squared_sigma);
+    // printf("received packets : %d\n", g_ping.received_packets);
+    // printf("round-trip squared sigma = %f\n", g_ping.round_trip_squared_sigma);
 	float a = (float)g_ping.received_packets * powf(round_trip_avg, 2);
     float numerator = g_ping.round_trip_squared_sigma - a;
-	printf("numerator=%f | a = %f\n", numerator, a);
+	// printf("numerator=%f | a = %f\n", numerator, a);
     return sqrtf(numerator / (float)g_ping.received_packets);
 }
 
