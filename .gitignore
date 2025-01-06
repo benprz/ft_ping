@@ -1,5 +1,5 @@
 inetutils-2.0
 ft_ping
 .obj
-.vscode
-.devcontainer
+.clangd
+ping
