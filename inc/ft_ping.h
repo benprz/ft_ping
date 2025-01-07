@@ -1,4 +1,11 @@
+#ifndef FT_PING_H
+#define FT_PING_H
+#endif
+
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

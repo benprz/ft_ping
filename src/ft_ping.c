@@ -126,7 +126,7 @@ int get_reply(int seq)
 
 	// hex_print_icmp_packet_data(buffer, count);
 	// printf("ICMP_REPLY\n");
-	// printf("icmp_hdr->type=%d\n", icmp_hdr->type);	
+	// printf("icmp_hdr->type=%d\n", icmp_hdr->type);
 	// printf("icmp_hdr->un.echo.id=%d\n", ntohs(icmp_hdr->un.echo.id));
 	// printf("icmp_hdr->un.echo.sequence=%d | seq=%d\n", ntohs(icmp_hdr->un.echo.sequence), seq);
 	// printf("icmp_hdr->checksum=0x%x\n", ntohs(icmp_hdr->checksum));
@@ -246,7 +246,7 @@ void ft_ping()
 	struct sigaction action = {0};
 	action.sa_handler = signal_handler;
 	sigaction(SIGINT, &action, NULL);
-	
+
 	send_echo_requests();
 	print_stats();
 }
