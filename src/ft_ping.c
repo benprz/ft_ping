@@ -241,6 +241,13 @@ void ft_ping()
 		error(EXIT_FAILURE, errno, "socket");
 	}
 
+	// TODO: check if ft_ping can broadcast, and if its needed
+	int broadcast = 1;
+	if (setsockopt(g_ping.sockfd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0)
+	{
+		error(EXIT_FAILURE, errno, "setsockopt");
+	}
+
 	g_ping.self_pid = getpid();
 
 	struct sigaction action = {0};

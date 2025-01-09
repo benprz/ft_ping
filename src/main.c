@@ -5,6 +5,7 @@
 
 #include "ft_ping.h"
 #include <argp.h>
+#include <assert.h>
 
 const char args_doc[] = "HOST ...";
 const char doc[] = "Send ICMP ECHO_REQUEST packets to network hosts."
@@ -73,6 +74,8 @@ int parse_options(int key, char *arg, struct argp_state *state)
 
 int main(int argc, char **argv)
 {
+    assert(PACKET_SIZE == 84 && "PACKET_SIZE constant should be 84 bytes (IP_HEADER_SIZE + ICMP_PACKET_SIZE)");
+
 	if (getuid() != 0)
 	{
 	    printf("You must be root to use ft_ping\n");

@@ -2,4 +2,4 @@ inetutils-2.0
 ft_ping
 .obj
 .clangd
-ping
+./ping
