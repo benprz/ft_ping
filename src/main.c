@@ -20,6 +20,7 @@ struct s_ping g_ping = {
 
 	0, //sockfd
 	0, //selfpid
+	false, //socket_dgram
 	true, //loop
 
 	0, //sent_packets
@@ -76,19 +77,13 @@ int main(int argc, char **argv)
 {
     assert(PACKET_SIZE == 84 && "PACKET_SIZE constant should be 84 bytes (IP_HEADER_SIZE + ICMP_PACKET_SIZE)");
 
-	if (getuid() != 0)
-	{
-	    printf("You must be root to use ft_ping\n");
-	    return (1);
-	}
-
 	// argp
 	struct argp_option options[] = {
 		{"verbose", 'v', 0, 0, "Produce verbose output", 0},
 		{0}};
 
 	struct argp argp = {options, parse_options, args_doc, doc, 0, 0, 0};
-	argp_parse(&argp, argc, argv, 0, 0, 0);
+	argp_parse(&argp, argc, argv, 0, NULL, NULL);
 
 	ft_ping();
 	return 0;
