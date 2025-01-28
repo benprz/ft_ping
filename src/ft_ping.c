@@ -237,16 +237,16 @@ int send_echo_requests()
 
 void ft_ping()
 {
-	if ((g_ping.sockfd = socket(g_ping.host->ai_family, SOCK_RAW, IPPROTO_ICMP)) < 0)
-	{
-        if (errno == EPERM || errno == EACCES)
-        {
-            errno = 0;
+	// if ((g_ping.sockfd = socket(g_ping.host->ai_family, SOCK_RAW, IPPROTO_ICMP)) < 0)
+	// {
+ //        if (errno == EPERM || errno == EACCES)
+ //        {
+ //            errno = 0;
 
-            /* Linux can allow subprivileged users to send ICMP
-            * packets formally encapsulated and built as a datagram socket,
-            * but then the identity number is set by the kernel itself.
-            */
+ //            /* Linux can allow subprivileged users to send ICMP
+ //            * packets formally encapsulated and built as a datagram socket,
+ //            * but then the identity number is set by the kernel itself.
+ //            */
             if ((g_ping.sockfd = socket(g_ping.host->ai_family, SOCK_DGRAM, IPPROTO_ICMP)) < 0)
             {
                 if (errno == EPERM || errno == EACCES || errno == EPROTONOSUPPORT)
@@ -256,8 +256,8 @@ void ft_ping()
                 exit(EXIT_FAILURE);
             }
             g_ping.socket_dgram = true;
-        }
-	}
+ //        }
+	// }
 
 	int broadcast = true;
 	setsockopt(g_ping.sockfd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
