@@ -138,8 +138,7 @@ int get_reply(int seq)
 	// 	printf("id yes\n");
 	// if (ntohs(icmp_hdr->un.echo.sequence) == seq)
 	// 	printf("seq yes\n");
-	if (icmp_hdr->type == ICMP_ECHOREPLY &&
-		(ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid || g_ping.socket_dgram)) // &&
+	if (icmp_hdr->type == ICMP_ECHOREPLY &&(ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)) // &&
 		// ntohs(icmp_hdr->un.echo.sequence) == seq)
 	{
 		g_ping.received_packets++;
@@ -237,27 +236,14 @@ int send_echo_requests()
 
 void ft_ping()
 {
-	// if ((g_ping.sockfd = socket(g_ping.host->ai_family, SOCK_RAW, IPPROTO_ICMP)) < 0)
-	// {
- //        if (errno == EPERM || errno == EACCES)
- //        {
- //            errno = 0;
-
- //            /* Linux can allow subprivileged users to send ICMP
- //            * packets formally encapsulated and built as a datagram socket,
- //            * but then the identity number is set by the kernel itself.
- //            */
-            if ((g_ping.sockfd = socket(g_ping.host->ai_family, SOCK_DGRAM, IPPROTO_ICMP)) < 0)
-            {
-                if (errno == EPERM || errno == EACCES || errno == EPROTONOSUPPORT)
-                    fprintf (stderr, "ping: Lacking privilege for icmp socket.\n");
-                else
-                    fprintf (stderr, "ping: %s\n", strerror (errno));
-                exit(EXIT_FAILURE);
-            }
-            g_ping.socket_dgram = true;
- //        }
-	// }
+	if ((g_ping.sockfd = socket(g_ping.host->ai_family, SOCK_RAW, IPPROTO_ICMP)) < 0)
+	{
+       	if (errno == EPERM || errno == EACCES || errno == EPROTONOSUPPORT)
+            fprintf (stderr, "ft_ping: Lacking privilege for icmp socket.\n");
+        else
+            fprintf (stderr, "ft_ping: %s\n", strerror (errno));
+        exit(EXIT_FAILURE);
+	}
 
 	int broadcast = true;
 	setsockopt(g_ping.sockfd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));

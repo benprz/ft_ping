@@ -52,7 +52,6 @@ struct s_ping
 
     int sockfd;
     pid_t self_pid;
-    bool socket_dgram; // Fallback solution for subprivileged users
     bool loop;
 
 	int sent_packets;

@@ -20,7 +20,6 @@ struct s_ping g_ping = {
 
 	0, //sockfd
 	0, //selfpid
-	false, //socket_dgram
 	true, //loop
 
 	0, //sent_packets
