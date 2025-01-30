@@ -45,6 +45,10 @@ clean:
 fclean: clean
 	@/bin/rm -f $(EXE)
 
-re: 
+re:
 	$(MAKE) fclean
 	$(MAKE) all
+
+altlib:
+	gcc -shared -fPIC -o altlib.so altlib.c
+	sudo LD_PRELOAD=./altlib.so ./ping google.com

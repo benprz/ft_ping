@@ -2,6 +2,7 @@
 // -v options
 // simple ipv4 (address/hostname) as parameters
 // manage FQDN without doing DNS resolution in the packet return
+// everything is formatted accordingly to the inetutils-2.0 ping program
 
 #include "ft_ping.h"
 #include <argp.h>

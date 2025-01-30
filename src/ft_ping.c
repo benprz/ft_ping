@@ -119,9 +119,7 @@ int get_reply(int seq)
 	ssize_t count;
 
 	if ((count = recvfrom(g_ping.sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&src_addr, &src_addr_len)) < 0)
-	{
-		error(EXIT_FAILURE, errno, "recvfrom");
-	}
+	   return -1;
 	struct ip *ip_hdr = (struct ip *)buffer;
 	struct icmphdr *icmp_hdr = (struct icmphdr *)(buffer + (ip_hdr->ip_hl << 2));
 
@@ -157,7 +155,7 @@ int get_reply(int seq)
 	return 0;
 }
 
-void send_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
+void send_icmp_echo_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 {
 	bzero(packet, ICMP_PACKET_SIZE);
 	// printf("seq=%d\n", *seq);
@@ -165,7 +163,6 @@ void send_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 	// printf("packet seq=%d\n", ntohs(icmp_hdr->un.echo.sequence));
 	memcpy(packet, icmp_hdr, sizeof(struct icmphdr));
 	gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
-
 	memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), ICMP_PAYLOAD_CHUNK, ICMP_PAYLOAD_CHUNK_SIZE);
 
 	uint16_t checksum = calculate_checksum((uint16_t *)packet, ICMP_PACKET_SIZE);
@@ -182,13 +179,11 @@ void send_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 	// hex_print_data(packet, sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE);
 	// printf("send request\n");
 	if (sendto(g_ping.sockfd, packet, ICMP_PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
-	{
-		error(EXIT_FAILURE, errno, "sendto");
-	}
+		error(EXIT_FAILURE, errno, "sending packet");
 	g_ping.sent_packets++;
 }
 
-void print_header() {
+void print_header_output() {
 	printf("PING %s (%s): %ld data bytes", g_ping.hostarg, g_ping.hostip, ICMP_PAYLOAD_SIZE);
 	if (g_ping.verbose)
 		printf(", id 0x%04x = %u", g_ping.self_pid, g_ping.self_pid);
@@ -198,21 +193,19 @@ void print_header() {
 int send_echo_requests()
 {
 	unsigned char packet[ICMP_PACKET_SIZE];
+	fd_set readfds;
+	int select_ret;
+	int seq = 0;
 
 	struct icmphdr icmp_hdr = {
 		.type = ICMP_ECHO, // no need htons coz its a byte
 		.code = 0, // same
 		.un.echo.id = htons(g_ping.self_pid),
 	};
+	print_header_output();
 
-	print_header();
-
-	fd_set readfds;
-	int select_ret;
 	FD_ZERO(&readfds);
-
-	int seq = 0;
-	send_request(&icmp_hdr, packet, &seq);
+	send_icmp_echo_request(&icmp_hdr, packet, &seq);
 	while (g_ping.loop == true)
 	{
 		FD_SET(g_ping.sockfd, &readfds);
@@ -221,11 +214,12 @@ int send_echo_requests()
 		if ((select_ret = select(g_ping.sockfd + 1, &readfds, NULL, NULL, &tv)) < 0)
 		{
 			if (errno != EINTR)
-				error(EXIT_FAILURE, errno, "select");
+				error(EXIT_FAILURE, errno, "select failed");
+			continue;
 		}
 		else if (select_ret == 0) //timeout
 		{
-			send_request(&icmp_hdr, packet, &seq);
+			send_icmp_echo_request(&icmp_hdr, packet, &seq);
 			seq++;
 		}
 		else
