@@ -12,7 +12,8 @@ SRC_DIR = src/
 SRC =	main.c\
 		ft_ping.c\
 		signal.c\
-		stats.c
+		stats.c\
+		utils.c
 
 OBJ_DIR = .obj/
 OBJ = $(SRC:%.c=$(OBJ_DIR)%.o)

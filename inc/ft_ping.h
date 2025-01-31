@@ -64,8 +64,12 @@ struct s_ping
 
 extern struct s_ping g_ping;
 
-
 void signal_handler(int);
 void print_stats();
+
+// utils
+void print_struct_data();
+void hex_print_data(unsigned char *packet, int len);
+void hex_print_icmp_packet_data(unsigned char *packet, int len);
 
 void ft_ping();
