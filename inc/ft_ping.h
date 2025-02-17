@@ -67,6 +67,10 @@ extern struct s_ping g_ping;
 void signal_handler(int);
 void print_stats();
 
+void print_header_output();
+uint16_t calculate_checksum(uint16_t *packet, int len);
+float calculate_round_trip(unsigned char *buffer);
+
 // utils
 void print_struct_data();
 void hex_print_data(unsigned char *packet, int len);

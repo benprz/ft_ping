@@ -1,40 +1,10 @@
 #include "ft_ping.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <sys/select.h>
 
-uint16_t calculate_checksum(uint16_t *packet, int len)
-{
-	uint32_t sum = 0;
-
-	// addition of 16-bits words
-	while (len > 1)
-	{
-		sum += *packet++;
-		len -= 2;
-	}
-	// if length is odd, add the last byte
-	if (len == 1)
-		sum += *(uint8_t *)packet;
-
-	// add carry (high 16 bits to low 16 bits) until carry is zero
-	while (sum >> 16)
-		sum = (sum >> 16) + (sum & 0xffff);
-
-	// return the one's complement of sum
-	return (uint16_t)(~sum);
-}
-
-float calculate_round_trip(unsigned char *buffer)
-{
-	struct timeval *tv_packet = (struct timeval*)(buffer + sizeof(struct ip) + sizeof(struct icmphdr));
-	struct timeval tv_now;
-
-	gettimeofday(&tv_now, NULL);
-	return (tv_now.tv_sec - tv_packet->tv_sec) * 1000.0 + (tv_now.tv_usec - tv_packet->tv_usec) / 1000.0;
-}
-
-int recv_icmp_reply_request(int seq)
+void recv_icmp_reply_request(int seq)
 {
 	unsigned char buffer[1024];
 	struct sockaddr_storage src_addr;
@@ -42,15 +12,20 @@ int recv_icmp_reply_request(int seq)
 	ssize_t recv_bytes;
 
 	if ((recv_bytes = recvfrom(g_ping.sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&src_addr, &src_addr_len)) < 0)
-	   return -1;
+	   return ;
 	struct ip *ip_hdr = (struct ip *)buffer;
 	struct icmphdr *icmp_hdr = (struct icmphdr *)(buffer + IP_HEADER_SIZE);
 
-	if (icmp_hdr->type == ICMP_ECHOREPLY &&(ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid))
-	{
+	if (icmp_hdr->type == ICMP_ECHOREPLY && ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid) {
+    	uint16_t verify_checksum = calculate_checksum((uint16_t *)icmp_hdr, ICMP_PACKET_SIZE);
+		if (verify_checksum != 0x0000) { // the calculated checksum including the checksum bytes (2) yields a value of 0
+			fprintf(stderr, "checksum mismatch from %s\n", g_ping.hostip);
+			return ;
+		}
+
 		g_ping.received_packets++;
 
-		float round_trip = calculate_round_trip(buffer);
+        float round_trip = calculate_round_trip(buffer);
 		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
 			   recv_bytes - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, round_trip);
 		if (round_trip < g_ping.round_trip_min || g_ping.round_trip_min == -1)
@@ -59,37 +34,26 @@ int recv_icmp_reply_request(int seq)
 			g_ping.round_trip_max = round_trip;
 		g_ping.round_trip_sigma += round_trip;
 		g_ping.round_trip_squared_sigma += powf(round_trip, 2);
-		return 1;
 	}
-	return 0;
 }
 
 void send_icmp_echo_request(struct icmphdr *icmp_hdr, unsigned char *packet, int *seq)
 {
 	bzero(packet, ICMP_PACKET_SIZE);
-	// printf("seq=%d\n", *seq);
 	icmp_hdr->un.echo.sequence = htons(*seq);
-	// printf("packet seq=%d\n", ntohs(icmp_hdr->un.echo.sequence));
 	memcpy(packet, icmp_hdr, sizeof(struct icmphdr));
 	gettimeofday((struct timeval *)(packet + sizeof(struct icmphdr)), NULL);
 	memcpy(packet + sizeof(struct icmphdr) + sizeof(struct timeval), ICMP_PAYLOAD_CHUNK, ICMP_PAYLOAD_CHUNK_SIZE);
 
 	uint16_t checksum = calculate_checksum((uint16_t *)packet, ICMP_PACKET_SIZE);
-	//big endian
-	packet[2] = checksum & 0xff; // second byte
-	packet[3] = checksum >> 8; // first byte
+	packet[2] = checksum & 0xff; // big endian: second byte
+	packet[3] = checksum >> 8; // big endian: first byte
 
 	if (sendto(g_ping.sockfd, packet, ICMP_PACKET_SIZE, 0, g_ping.host->ai_addr, g_ping.host->ai_addrlen) < 0)
 		error(EXIT_FAILURE, errno, "sending packet");
 	g_ping.sent_packets++;
 }
 
-void print_header_output() {
-	printf("PING %s (%s): %ld data bytes", g_ping.hostarg, g_ping.hostip, ICMP_PAYLOAD_SIZE);
-	if (g_ping.verbose)
-		printf(", id 0x%04x = %u", g_ping.self_pid, g_ping.self_pid);
-	printf("\n");
-}
 
 int send_and_recv_requests()
 {
@@ -99,8 +63,8 @@ int send_and_recv_requests()
 	int seq = 0;
 
 	struct icmphdr icmp_hdr = {
-		.type = ICMP_ECHO, // no need htons coz its a byte
-		.code = 0, // same
+		.type = ICMP_ECHO,
+		.code = 0,
 		.un.echo.id = htons(g_ping.self_pid),
 	};
 	print_header_output();
