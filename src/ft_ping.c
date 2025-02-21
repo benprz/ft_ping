@@ -13,27 +13,42 @@ void recv_icmp_reply_request(int seq)
 
 	if ((recv_bytes = recvfrom(g_ping.sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&src_addr, &src_addr_len)) < 0)
 	   return ;
+	// define the different parts of the packet
 	struct ip *ip_hdr = (struct ip *)buffer;
 	struct icmphdr *icmp_hdr = (struct icmphdr *)(buffer + IP_HEADER_SIZE);
 
-	if (icmp_hdr->type == ICMP_ECHOREPLY && ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid) {
-    	uint16_t verify_checksum = calculate_checksum((uint16_t *)icmp_hdr, ICMP_PACKET_SIZE);
-		if (verify_checksum != 0x0000) { // the calculated checksum including the checksum bytes (2) yields a value of 0
-			fprintf(stderr, "checksum mismatch from %s\n", g_ping.hostip);
-			return ;
+	// printf("icmp_hdr->type = %d\n", icmp_hdr->type);
+	// printf("icmp_hdr->un.echo.id = %d\n", ntohs(icmp_hdr->un.echo.id));
+	// printf("g_ping.self_pid = %d\n", g_ping.self_pid);
+	switch (icmp_hdr->type)
+	{
+	case ICMP_ECHOREPLY:
+		if (ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)
+		{
+			if (icmp_hdr->type == ICMP_ECHOREPLY)
+			{
+				uint16_t verify_checksum = calculate_checksum((uint16_t *)icmp_hdr, ICMP_PACKET_SIZE);
+				if (verify_checksum != 0x0000)
+				{ // the calculated checksum including the checksum bytes (2) yields a value of 0
+					fprintf(stderr, "checksum mismatch from %s\n", g_ping.hostip);
+					return;
+				}
+
+				float round_trip = calculate_round_trip(buffer);
+				printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n", recv_bytes - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, round_trip);
+				if (round_trip < g_ping.round_trip_min || g_ping.round_trip_min == -1)
+					g_ping.round_trip_min = round_trip;
+				if (round_trip > g_ping.round_trip_max || g_ping.round_trip_max == -1)
+					g_ping.round_trip_max = round_trip;
+				g_ping.round_trip_sigma += round_trip;
+				g_ping.round_trip_squared_sigma += powf(round_trip, 2);
+
+				g_ping.received_packets++;
+			}
 		}
-
-		g_ping.received_packets++;
-
-        float round_trip = calculate_round_trip(buffer);
-		printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
-			   recv_bytes - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, round_trip);
-		if (round_trip < g_ping.round_trip_min || g_ping.round_trip_min == -1)
-			g_ping.round_trip_min = round_trip;
-		if (round_trip >  g_ping.round_trip_max || g_ping.round_trip_max == -1)
-			g_ping.round_trip_max = round_trip;
-		g_ping.round_trip_sigma += round_trip;
-		g_ping.round_trip_squared_sigma += powf(round_trip, 2);
+		break;
+	case ICMP_DEST_UNREACH:
+		printf("%ld bytes from %s: Destination host unreachable\n", recv_bytes - sizeof(struct ip), g_ping.hostip);
 	}
 }
 
@@ -54,7 +69,6 @@ void send_icmp_echo_request(struct icmphdr *icmp_hdr, unsigned char *packet, int
 	g_ping.sent_packets++;
 }
 
-
 int send_and_recv_requests()
 {
 	unsigned char packet[ICMP_PACKET_SIZE];
@@ -62,11 +76,13 @@ int send_and_recv_requests()
 	int select_ret;
 	int seq = 0;
 
+	// icmp header template for echo request
 	struct icmphdr icmp_hdr = {
 		.type = ICMP_ECHO,
 		.code = 0,
 		.un.echo.id = htons(g_ping.self_pid),
 	};
+
 	print_header_output();
 
 	FD_ZERO(&readfds);
@@ -84,11 +100,14 @@ int send_and_recv_requests()
 		}
 		else if (select_ret == 0) //timeout
 		{
+			// printf("send\n");
 			send_icmp_echo_request(&icmp_hdr, packet, &seq);
 			seq++;
 		}
-		else
+		else {
+			// printf("recv\n");
 			recv_icmp_reply_request(seq);
+		}
 	}
 	return 0;
 }
