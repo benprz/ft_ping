@@ -32,7 +32,7 @@ $(OBJ_DIR)%.o: $(SRC_DIR)%.c $(addprefix $(INC_DIR),$(INC))
 
 container:
 	docker build . -t ft_ping
-	docker run -d --rm --cap-add=NET_ADMIN --network host -v ./:/shared --name ft_ping ft_ping
+	docker run -d --rm -v ./:/shared --name ft_ping ft_ping
 
 shell:
 	docker exec -it ft_ping /bin/bash
@@ -50,7 +50,3 @@ fclean: clean
 re:
 	$(MAKE) fclean
 	$(MAKE) all
-
-altlib:
-	gcc -shared -fPIC -o altlib.so altlib.c
-	sudo LD_PRELOAD=./altlib.so ./ping google.com
