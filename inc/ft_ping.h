@@ -30,9 +30,6 @@
 //gettimeofday
 #include <sys/time.h>
 
-// Dev macro : to delete
-#define UNUSED(x) (void)x
-
 #define PACKET_SIZE IP_HEADER_SIZE + ICMP_PACKET_SIZE
 #define IP_HEADER_SIZE sizeof(struct ip)
 #define ICMP_PACKET_SIZE sizeof(struct icmphdr) + ICMP_PAYLOAD_SIZE
@@ -49,6 +46,7 @@ struct s_ping
     char hostip[INET_ADDRSTRLEN];
     struct addrinfo *host;
     bool verbose;
+    int ttl;
 
     int sockfd;
     pid_t self_pid;

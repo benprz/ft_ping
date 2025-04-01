@@ -6,8 +6,6 @@ WORKDIR /shared
 
 RUN echo "service ssh start && ip a && tail -f" > /script.sh
 
-COPY inetutils-2.0/ping/ping /bin/ping
-
 EXPOSE 22
 
 CMD ["sh", "/script.sh"]

@@ -1,7 +1,7 @@
 #MAKEFLAGS += --silent
 
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -Wpedantic -g
+CFLAGS = -Wall -Wextra -Werror -Wpedantic
 CDEBUGFLAGS = -g
 INC_DIR = inc/
 INC = ft_ping.h
@@ -38,6 +38,7 @@ shell:
 	docker exec -it ft_ping /bin/bash
 
 rm_container:
+	docker stop ft_ping
 	docker container prune
 
 clean:

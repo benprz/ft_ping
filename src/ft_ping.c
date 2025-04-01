@@ -13,29 +13,26 @@ void recv_icmp_reply_request(int seq)
 
 	if ((recv_bytes = recvfrom(g_ping.sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&src_addr, &src_addr_len)) < 0)
 	   return ;
-	// define the different parts of the packet
 	struct ip *ip_hdr = (struct ip *)buffer;
 	struct icmphdr *icmp_hdr = (struct icmphdr *)(buffer + IP_HEADER_SIZE);
+	long recv_icmp_packet_size = recv_bytes - sizeof(struct ip);
 
-	// printf("icmp_hdr->type = %d\n", icmp_hdr->type);
-	// printf("icmp_hdr->un.echo.id = %d\n", ntohs(icmp_hdr->un.echo.id));
-	// printf("g_ping.self_pid = %d\n", g_ping.self_pid);
 	switch (icmp_hdr->type)
 	{
-	case ICMP_ECHOREPLY:
+		case ICMP_ECHOREPLY:
 		if (ntohs(icmp_hdr->un.echo.id) == g_ping.self_pid)
 		{
 			if (icmp_hdr->type == ICMP_ECHOREPLY)
 			{
 				uint16_t verify_checksum = calculate_checksum((uint16_t *)icmp_hdr, ICMP_PACKET_SIZE);
 				if (verify_checksum != 0x0000)
-				{ // the calculated checksum including the checksum bytes (2) yields a value of 0
+				{ // the calculated checksum including the checksum bytes (2 bytes) yields a value of 0
 					fprintf(stderr, "checksum mismatch from %s\n", g_ping.hostip);
 					return;
 				}
 
 				float round_trip = calculate_round_trip(buffer);
-				printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n", recv_bytes - sizeof(struct ip), g_ping.hostip, seq, ip_hdr->ip_ttl, round_trip);
+				printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n", recv_icmp_packet_size, g_ping.hostip, seq, ip_hdr->ip_ttl, round_trip);
 				if (round_trip < g_ping.round_trip_min || g_ping.round_trip_min == -1)
 					g_ping.round_trip_min = round_trip;
 				if (round_trip > g_ping.round_trip_max || g_ping.round_trip_max == -1)
@@ -48,7 +45,11 @@ void recv_icmp_reply_request(int seq)
 		}
 		break;
 	case ICMP_DEST_UNREACH:
-		printf("%ld bytes from %s: Destination host unreachable\n", recv_bytes - sizeof(struct ip), g_ping.hostip);
+		printf("%ld bytes from %s: Destination host unreachable\n", recv_icmp_packet_size, g_ping.hostip);
+		break;
+	case ICMP_TIME_EXCEEDED:
+		printf("%ld bytes from %s: Time to live exceeded\n", recv_icmp_packet_size, g_ping.hostip);
+		break;
 	}
 }
 
@@ -100,12 +101,10 @@ int send_and_recv_requests()
 		}
 		else if (select_ret == 0) //timeout
 		{
-			// printf("send\n");
 			send_icmp_echo_request(&icmp_hdr, packet, &seq);
 			seq++;
 		}
 		else {
-			// printf("recv\n");
 			recv_icmp_reply_request(seq);
 		}
 	}
@@ -124,7 +123,13 @@ void ft_ping()
 	}
 
 	int broadcast = true;
-	setsockopt(g_ping.sockfd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+	if (setsockopt(g_ping.sockfd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0)
+		error(EXIT_FAILURE, errno, "setsockopt(SO_BROADCAST)");
+
+	if (g_ping.ttl > 0) {
+		if (setsockopt(g_ping.sockfd, IPPROTO_IP, IP_TTL, &g_ping.ttl, sizeof(g_ping.ttl)) < 0)
+			error(EXIT_FAILURE, errno, "setsockopt(IP_TTL)");
+	}
 
 	g_ping.self_pid = getpid();
 

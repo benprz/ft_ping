@@ -13,11 +13,16 @@ const char doc[] = "Send ICMP ECHO_REQUEST packets to network hosts."
 				   "\vOptions marked with (root only) are available only to "
 				   "superuser.";
 
+enum {
+	ARGP_KEY_TTL = 256,
+};
+
 struct s_ping g_ping = {
 	NULL, //hostarg
 	{0}, //hostip
 	NULL, //host
 	false, //verbose
+	0, //ttl
 
 	0, //sockfd
 	0, //selfpid
@@ -60,6 +65,10 @@ int parse_options(int key, char *arg, struct argp_state *state)
 		g_ping.verbose = true;
 		break;
 
+	case ARGP_KEY_TTL:
+		g_ping.ttl = atoi(arg);
+		break;
+
 	case ARGP_KEY_ARG:
 		return parse_host(arg);
 
@@ -80,6 +89,7 @@ int main(int argc, char **argv)
 	// argp
 	struct argp_option options[] = {
 		{"verbose", 'v', 0, 0, "Produce verbose output", 0},
+		{"ttl", ARGP_KEY_TTL, "hop-limit", 0, "Set TTL hop limit", 0},
 		{0}};
 
 	struct argp argp = {options, parse_options, args_doc, doc, 0, 0, 0};
