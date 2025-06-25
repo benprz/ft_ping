@@ -150,7 +150,3 @@ make rm_container
 ## License
 
 This project is part of the 42 school curriculum and is intended for educational purposes.
-
-## Contributing
-
-This is an educational project. For learning purposes, feel free to study the code and understand how ICMP ping works at a low level. 
